@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가화만사성(家和萬事成) - 우리 가족 디지털 아카이브</title>
+    <meta name="description" content="가족의 소중한 순간들을 영구히 보관하는 우리 가족만의 공간입니다.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://kit.fontawesome.com/your-code.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <!-- Password Protection Overlay -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="glass login-box">
+            <h2>가족 인증</h2>
+            <p>우리 가족만의 소중한 공간입니다.<br>비밀번호를 입력해주세요.</p>
+            <input type="password" id="family-password" placeholder="비밀번호 입력">
+            <button onclick="checkPassword()">입장하기</button>
+            <p id="login-error" style="color: #e63946; margin-top: 10px; display: none;">비밀번호가 올바르지 않습니다.</p>
+        </div>
+    </div>
+
+    <!-- Main Content (Hidden initially) -->
+    <div id="main-content" style="display: none;">
+        <header class="glass">
+            <div class="logo">가화만사성</div>
+            <nav>
+                <ul>
+                    <li><a href="#home">홈</a></li>
+                    <li><a href="#news">우리집 소식</a></li>
+                    <li><a href="#album">가족 앨범</a></li>
+                    <li><a href="#video">추억 영상관</a></li>
+                    <li><a href="#events">알림 마당</a></li>
+                    <li><a href="#study">할아버지의 서재</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Hero Section -->
+            <section id="home" class="hero">
+                <h1>가화만사성(家和萬事成)</h1>
+                <p>가족의 역사가 시작되는 곳,<br>영구히 보관되는 우리들의 추억 아카이브</p>
+                <a href="#news" class="btn-primary">최신 소식 보기</a>
+            </section>
+
+            <!-- Family Feed Section -->
+            <section id="news" class="container">
+                <div class="section-title">
+                    <h2>우리집 소식</h2>
+                    <div class="underline"></div>
+                    <button class="btn-secondary" onclick="openModal()" style="margin-top: 20px;">글쓰기</button>
+                </div>
+                <div class="grid" id="feed-container">
+                    <!-- Dynamic feed items will go here -->
+                </div>
+            </section>
+
+            <!-- Family Album -->
+            <section id="album" class="container">
+                <div class="section-title">
+                    <h2>가족 앨범</h2>
+                    <div class="underline"></div>
+                    <button class="btn-secondary" onclick="openAlbumModal()" style="margin-top: 20px;">사진 올리기</button>
+                </div>
+                <div class="grid gallery" id="album-container">
+                    <!-- Gallery items -->
+                </div>
+            </section>
+
+            <!-- Memory Cinema -->
+            <section id="video" class="container">
+                <div class="section-title">
+                    <h2>추억 영상관</h2>
+                    <div class="underline"></div>
+                    <button class="btn-secondary" onclick="openVideoModal()" style="margin-top: 20px;">영상 올리기</button>
+                </div>
+                <div class="grid" id="video-container">
+                    <!-- Video items -->
+                </div>
+            </section>
+
+            <!-- Event Planner -->
+            <section id="events" class="container">
+                <div class="section-title">
+                    <h2>알림 마당</h2>
+                    <div class="underline"></div>
+                    <button class="btn-secondary" onclick="openEventModal()" style="margin-top: 20px;">일정 추가</button>
+                </div>
+                <div class="calendar-widget glass" id="event-list">
+                    <h3>다음 가족 모임</h3>
+                    <div id="events-container">
+                        <div class="event-card">
+                            <div class="date">5월 8일 (금)</div>
+                            <div class="desc">어버이날 기념 가족 식사 - 송파 가든</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Grandpa's Study -->
+            <section id="study" class="container">
+                <div class="section-title">
+                    <h2>할아버지의 서재</h2>
+                    <div class="underline"></div>
+                </div>
+                <div class="grid" id="study-container">
+                    <!-- Archive posts -->
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 가화만사성 Family Archive. All rights reserved.</p>
+            <p>사랑하는 가족을 위해 차현배 제작</p>
+        </footer>
+    </div>
+
+    <!-- Write News Modal -->
+    <div id="post-modal" class="modal-overlay" style="display: none;">
+        <div class="glass modal-box">
+            <h2>소식 전하기</h2>
+            <div class="input-group">
+                <input type="text" id="post-title" placeholder="제목">
+                <input type="text" id="post-author" placeholder="작성자 (예: 큰아들, 서윤)">
+                <textarea id="post-content" placeholder="가족에게 전할 소식을 적어주세요"></textarea>
+                <input type="text" id="post-image" placeholder="이미지 주소 (필요시)">
+            </div>
+            <div class="modal-buttons">
+                <button onclick="closeModal()" class="btn-cancel">취소</button>
+                <button onclick="submitPost()" class="btn-primary">올리기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Album Modal -->
+    <div id="album-modal" class="modal-overlay" style="display: none;">
+        <div class="glass modal-box">
+            <h2>사진 올리기</h2>
+            <div class="input-group">
+                <p style="font-size: 0.9rem; margin-bottom: 10px;">PC에서 사진을 선택하거나,<br>복사한 사진을 여기에 붙여넣기(Ctrl+V) 하세요.</p>
+                <input type="file" id="album-file" accept="image/*" style="padding: 10px;">
+                <div id="paste-area" style="border: 2px dashed #ddd; padding: 20px; border-radius: 10px; text-align: center; color: #999;">
+                    여기에 사진 붙여넣기
+                </div>
+                <div id="preview-container" style="display: none; margin-top: 15px; text-align: center;">
+                    <img id="image-preview" style="max-width: 100%; border-radius: 10px;">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button onclick="closeAlbumModal()" class="btn-cancel">취소</button>
+                <button onclick="submitAlbum()" class="btn-primary">추가하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Modal -->
+    <div id="video-modal" class="modal-overlay" style="display: none;">
+        <div class="glass modal-box">
+            <h2>영상 올리기</h2>
+            <div class="input-group">
+                <p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">
+                    방법 1: 유튜브 등 영상 주소(URL)를 입력하세요.<br>
+                    방법 2: PC에서 영상 파일을 선택하세요 (고용량은 유튜브 권장).
+                </p>
+                <input type="text" id="video-url" placeholder="유튜브 또는 영상 주소 (URL)">
+                <div style="text-align: center; margin: 10px 0; color: #999;">- OR -</div>
+                <input type="file" id="video-file" accept="video/*" style="padding: 10px;">
+                <input type="text" id="video-title-input" placeholder="영상 제목">
+                <input type="date" id="video-date-input">
+                <div id="video-preview-container" style="display: none; margin-top: 15px; text-align: center;">
+                    <video id="video-preview" controls style="max-width: 100%; border-radius: 10px;"></video>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button onclick="closeVideoModal()" class="btn-cancel">취소</button>
+                <button onclick="submitVideo()" class="btn-primary">올리기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Modal -->
+    <div id="event-modal" class="modal-overlay" style="display: none;">
+        <div class="glass modal-box">
+            <h2>새 일정 추가</h2>
+            <div class="input-group">
+                <input type="text" id="event-date" placeholder="날짜 (예: 6월 15일)">
+                <input type="text" id="event-desc" placeholder="일정 설명">
+            </div>
+            <div class="modal-buttons">
+                <button onclick="closeEventModal()" class="btn-cancel">취소</button>
+                <button onclick="submitEvent()" class="btn-primary">등록하기</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
