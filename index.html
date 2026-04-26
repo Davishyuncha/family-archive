@@ -114,7 +114,8 @@
 
         firebase.initializeApp(firebaseConfig);
         var db = firebase.firestore();
-        db.settings({ experimentalForceLongPolling: true });
+        // HTTPS 환경에서는 LongPolling 설정을 빼는 것이 더 안정적입니다.
+        // db.settings({ experimentalForceLongPolling: true });
 
         var compressedImageData = null;
 
@@ -139,21 +140,21 @@
                 f.onchange = function(e) {
                     var file = e.target.files[0];
                     if (!file) return;
-                    p.innerText = "압축 중...";
+                    p.innerText = "사진 처리 중...";
                     var reader = new FileReader();
                     reader.onload = function(ev) {
                         var img = new Image();
                         img.onload = function() {
                             var canvas = document.createElement('canvas');
-                            var MAX = 800;
+                            var MAX = 1000;
                             var w = img.width, h = img.height;
                             if (w > MAX) { h *= MAX / w; w = MAX; }
                             canvas.width = w; canvas.height = h;
                             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                            compressedImageData = canvas.toDataURL('image/jpeg', 0.6);
+                            compressedImageData = canvas.toDataURL('image/jpeg', 0.7);
                             document.getElementById('image-preview').src = compressedImageData;
                             document.getElementById('preview-container').style.display = 'block';
-                            p.innerText = "준비 완료! [추가하기] 클릭";
+                            p.innerText = "준비 완료!";
                         };
                         img.src = ev.target.result;
                     };
@@ -170,13 +171,19 @@
         }
 
         function submitAlbum() {
-            alert("버튼이 눌렸습니다! 창을 닫고 전송을 시작합니다.");
-            if (!compressedImageData) { alert("사진이 준비되지 않았습니다."); return; }
+            if (!compressedImageData) { alert("사진을 먼저 선택해 주세요."); return; }
+            
             closeAlbumModal();
+            alert("전송을 시작합니다. 잠시만 기다려 주세요.");
+            
             db.collection("familyAlbum").add({
                 imageUrl: compressedImageData,
-                createdAt: new Date().toISOString()
-            }).catch(function(e) { alert("오류: " + e.message); });
+                createdAt: new Date().getTime() // 숫자로 저장하여 인덱스 문제 방지
+            }).then(function() {
+                alert("서버 전송이 완료되었습니다!");
+            }).catch(function(e) { 
+                alert("전송 실패 오류: " + e.message + "\nFirebase의 Rules(규칙) 탭에서 allow read, write: if true; 로 되어 있는지 확인해 주세요.");
+            });
         }
 
         function submitPost() {
@@ -188,12 +195,15 @@
                 title: t, author: a, content: c,
                 image: document.getElementById('post-image').value || "",
                 date: new Date().toISOString().split('T')[0],
-                createdAt: new Date().toISOString()
-            }).then(closeModal);
+                createdAt: new Date().getTime()
+            }).then(function() {
+                closeModal();
+            });
         }
 
         function initializeRealtimeUpdates() {
-            db.collection("familyPosts").orderBy("createdAt", "desc").onSnapshot(function(qs) {
+            // 정렬(orderBy)을 빼고 기본 순서로 가져와서 인덱스 오류 방지
+            db.collection("familyPosts").onSnapshot(function(qs) {
                 var c = document.getElementById('feed-container'); c.innerHTML = '';
                 qs.forEach(function(doc) {
                     var item = doc.data();
@@ -202,7 +212,7 @@
                     c.appendChild(d);
                 });
             });
-            db.collection("familyAlbum").orderBy("createdAt", "desc").onSnapshot(function(qs) {
+            db.collection("familyAlbum").onSnapshot(function(qs) {
                 var c = document.getElementById('album-container'); c.innerHTML = '';
                 qs.forEach(function(doc) {
                     var item = doc.data();
