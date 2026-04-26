@@ -150,28 +150,56 @@ function submitAlbum() {
 }
 
 function submitVideo() {
-    const title = document.getElementById('video-title-input').value;
-    const date = document.getElementById('video-date-input').value;
-    const url = document.getElementById('video-url').value;
+    const titleInput = document.getElementById('video-title-input');
+    const dateInput = document.getElementById('video-date-input');
+    const urlInput = document.getElementById('video-url');
     
-    if (!title || !date) { alert("제목과 날짜를 입력해주세요!"); return; }
+    const title = titleInput.value.trim();
+    const date = dateInput.value;
+    const url = urlInput.value.trim();
+    
+    if (!title || !date) { 
+        alert("영상 제목과 날짜를 꼭 입력해주세요!"); 
+        return; 
+    }
 
-    const videoSource = url || selectedVideoData;
-    if (!videoSource) { alert("영상 파일이나 주소를 입력해주세요!"); return; }
+    // URL이 있으면 URL 우선, 없으면 선택된 파일 데이터 사용
+    let videoSource = "";
+    let isUrl = false;
 
-    const newVideo = { title, date, source: videoSource, isUrl: !!url };
+    if (url) {
+        videoSource = url;
+        isUrl = true;
+    } else if (selectedVideoData) {
+        videoSource = selectedVideoData;
+        isUrl = false;
+    }
+
+    if (!videoSource) { 
+        alert("유튜브 주소를 입력하거나 영상 파일을 선택해주세요!"); 
+        return; 
+    }
+
+    const newVideo = { title, date, source: videoSource, isUrl: isUrl };
     const savedVideos = JSON.parse(localStorage.getItem('familyVideos') || "[]");
     
     try {
         savedVideos.unshift(newVideo);
         localStorage.setItem('familyVideos', JSON.stringify(savedVideos));
+        
+        // 입력창 초기화
+        titleInput.value = "";
+        dateInput.value = "";
+        urlInput.value = "";
+        resetVideoPreview();
+        
+        renderVideos();
+        closeVideoModal();
+        alert("영상이 성공적으로 등록되었습니다!");
     } catch (e) {
-        alert("영상 용량이 너무 커서 저장할 수 없습니다. 유튜브 주소(URL) 방식을 사용해 주세요.");
-        return;
+        alert("저장 공간이 부족합니다. 영상 파일 대신 유튜브 주소(URL)를 사용해 주세요.");
+        console.error("Save error:", e);
     }
-
-    renderVideos();
-    closeVideoModal();
 }
 
 function submitEvent() {
@@ -200,57 +228,77 @@ function renderFeed() {
                 <span class="date">${item.date} | ${item.author}</span>
                 <h3>${item.title}</h3>
                 <p>${item.content}</p>
+                <button class="btn-delete" onclick="deleteItem('familyPosts', ${savedPosts.indexOf(item)})">삭제</button>
             </div>
         `;
         feedContainer.appendChild(card);
     });
 }
 
+function deleteItem(key, index) {
+    if (!confirm("정말 이 항목을 삭제하시겠습니까?")) return;
+    const items = JSON.parse(localStorage.getItem(key) || "[]");
+    items.splice(index, 1);
+    localStorage.setItem(key, JSON.stringify(items));
+    initializeContent(); // 화면 새로고침
+}
+
 function renderAlbum() {
     const albumContainer = document.getElementById('album-container');
     albumContainer.innerHTML = '';
     const savedAlbum = JSON.parse(localStorage.getItem('familyAlbum') || "[]");
-    savedAlbum.forEach(imgUrl => {
+    savedAlbum.forEach((imgUrl, index) => {
         const item = document.createElement('div');
         item.className = 'glass card';
         item.style.padding = '10px';
-        item.innerHTML = `<img src="${imgUrl}" style="margin-bottom: 0; border-radius: 10px;">`;
+        item.innerHTML = `
+            <img src="${imgUrl}" style="margin-bottom: 10px; border-radius: 10px;">
+            <button class="btn-delete" onclick="deleteItem('familyAlbum', ${index})">삭제</button>
+        `;
         albumContainer.appendChild(item);
     });
-}
-
-// Helper to get YouTube Embed URL
-function getYouTubeEmbedUrl(url) {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    if (match && match[2].length === 11) {
-        return `https://www.youtube.com/embed/${match[2]}`;
-    }
-    return url;
 }
 
 function renderVideos() {
     const videoContainer = document.getElementById('video-container');
     videoContainer.innerHTML = '';
     const savedVideos = JSON.parse(localStorage.getItem('familyVideos') || "[]");
-    savedVideos.forEach(video => {
+    savedVideos.forEach((video, index) => {
         const item = document.createElement('div');
         item.className = 'glass card video-card';
         const displayUrl = video.isUrl ? getYouTubeEmbedUrl(video.source) : video.source;
         item.innerHTML = `
             <div class="video-display" style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: 15px; overflow: hidden;">
                 ${video.isUrl ? 
-                    `<iframe src="${displayUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>` : 
+                    `<iframe src="${displayUrl}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : 
                     `<video src="${video.source}" controls style="width: 100%; height: 100%;"></video>`
                 }
             </div>
             <div class="card-content">
                 <span class="date">${video.date}</span>
                 <h3>${video.title}</h3>
+                <div class="card-buttons" style="display: flex; gap: 10px; margin-top: 15px;">
+                    ${video.isUrl ? `<a href="${video.source}" target="_blank" class="btn-watch">유튜브에서 보기</a>` : ''}
+                    <button class="btn-delete" onclick="deleteItem('familyVideos', ${index})" style="margin-top: 0;">삭제</button>
+                </div>
             </div>
         `;
         videoContainer.appendChild(item);
     });
+}
+
+// Helper to get YouTube Embed URL (Improved)
+function getYouTubeEmbedUrl(url) {
+    if (!url) return '';
+    if (url.includes('embed/')) return url;
+    
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    
+    if (match && match[2].length === 11) {
+        return `https://www.youtube.com/embed/${match[2]}?autoplay=0&rel=0`;
+    }
+    return url;
 }
 
 function renderEvents() {
