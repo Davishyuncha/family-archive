@@ -5,17 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>가화만사성(家和萬事成) - 우리 가족 디지털 아카이브</title>
-    <meta name="description" content="가족의 소중한 순간들을 영구히 보관하는 우리 가족만의 공간입니다.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    <script src="https://kit.fontawesome.com/your-code.js" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 </head>
 
 <body>
-
     <!-- Password Protection Overlay -->
     <div id="login-overlay" class="login-overlay">
         <div class="glass login-box">
@@ -27,7 +23,7 @@
         </div>
     </div>
 
-    <!-- Main Content (Hidden initially) -->
+    <!-- Main Content -->
     <div id="main-content" style="display: none;">
         <header class="glass">
             <div class="logo">가화만사성</div>
@@ -36,112 +32,37 @@
                     <li><a href="#home">홈</a></li>
                     <li><a href="#news">우리집 소식</a></li>
                     <li><a href="#album">가족 앨범</a></li>
-                    <li><a href="#video">추억 영상관</a></li>
-                    <li><a href="#events">알림 마당</a></li>
-                    <li><a href="#study">할아버지의 서재</a></li>
                 </ul>
             </nav>
         </header>
 
         <main>
-            <!-- Hero Section -->
             <section id="home" class="hero-container">
-                <div class="hero-image-box">
-                    <!-- Photo only area -->
-                </div>
+                <div class="hero-image-box"></div>
                 <div class="hero-text-box">
-                    <p>가족의 역사가 시작되는 곳,<br>영구히 보관되는 우리들의 추억 아카이브</p>
+                    <p>우리들의 추억 아카이브</p>
                     <a href="#news" class="btn-primary">최신 소식 보기</a>
                 </div>
             </section>
 
-            <!-- Family Feed Section -->
             <section id="news" class="container">
                 <div class="section-title">
                     <h2>우리집 소식</h2>
                     <div class="underline"></div>
                     <button class="btn-secondary" onclick="openModal()" style="margin-top: 20px;">글쓰기</button>
                 </div>
-                <div class="grid" id="feed-container">
-                    <!-- Dynamic feed items will go here -->
-                </div>
+                <div class="grid" id="feed-container"></div>
             </section>
 
-            <!-- Family Album -->
             <section id="album" class="container">
                 <div class="section-title">
                     <h2>가족 앨범</h2>
                     <div class="underline"></div>
                     <button class="btn-secondary" onclick="openAlbumModal()" style="margin-top: 20px;">사진 올리기</button>
                 </div>
-                <div class="grid gallery" id="album-container">
-                    <!-- Gallery items -->
-                </div>
-            </section>
-
-            <!-- Memory Cinema -->
-            <section id="video" class="container">
-                <div class="section-title">
-                    <h2>추억 영상관</h2>
-                    <div class="underline"></div>
-                    <button class="btn-secondary" onclick="openVideoModal()" style="margin-top: 20px;">영상 올리기</button>
-                </div>
-                <div class="grid" id="video-container">
-                    <!-- Video items -->
-                </div>
-            </section>
-
-            <!-- Event Planner -->
-            <section id="events" class="container">
-                <div class="section-title">
-                    <h2>알림 마당</h2>
-                    <div class="underline"></div>
-                    <button class="btn-secondary" onclick="openEventModal()" style="margin-top: 20px;">일정 추가</button>
-                </div>
-                <div class="calendar-widget glass" id="event-list">
-                    <h3>다음 가족 모임</h3>
-                    <div id="events-container">
-                        <div class="event-card">
-                            <div class="date">5월 8일 (금)</div>
-                            <div class="desc">어버이날 기념 가족 식사 - 송파 가든</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Grandpa's Study -->
-            <section id="study" class="container">
-                <div class="section-title">
-                    <h2>할아버지의 서재</h2>
-                    <div class="underline"></div>
-                </div>
-                <div class="grid" id="study-container">
-                    <!-- Archive posts -->
-                </div>
+                <div class="grid gallery" id="album-container"></div>
             </section>
         </main>
-
-        <footer>
-            <p>&copy; 2026 가화만사성 Family Archive. All rights reserved.</p>
-            <p>사랑하는 가족을 위해 차현배 제작</p>
-        </footer>
-    </div>
-
-    <!-- Write News Modal -->
-    <div id="post-modal" class="modal-overlay" style="display: none;">
-        <div class="glass modal-box">
-            <h2>소식 전하기</h2>
-            <div class="input-group">
-                <input type="text" id="post-title" placeholder="제목">
-                <input type="text" id="post-author" placeholder="작성자 (예: 큰아들, 서윤)">
-                <textarea id="post-content" placeholder="가족에게 전할 소식을 적어주세요"></textarea>
-                <input type="text" id="post-image" placeholder="이미지 주소 (필요시)">
-            </div>
-            <div class="modal-buttons">
-                <button onclick="closeModal()" class="btn-cancel">취소</button>
-                <button onclick="submitPost()" class="btn-primary">올리기</button>
-            </div>
-        </div>
     </div>
 
     <!-- Album Modal -->
@@ -149,11 +70,9 @@
         <div class="glass modal-box">
             <h2>사진 올리기</h2>
             <div class="input-group">
-                <p style="font-size: 0.9rem; margin-bottom: 10px;">PC에서 사진을 선택하거나,<br>복사한 사진을 여기에 붙여넣기(Ctrl+V) 하세요.</p>
-                <input type="file" id="album-file" accept="image/*" style="padding: 10px;">
-                <div id="paste-area"
-                    style="border: 2px dashed #ddd; padding: 20px; border-radius: 10px; text-align: center; color: #999;">
-                    여기에 사진 붙여넣기
+                <input type="file" id="album-file" accept="image/*" style="display:none;">
+                <div id="paste-area" style="border: 2px dashed #ddd; padding: 40px; text-align: center; cursor: pointer;">
+                    여기를 터치하여 사진 선택
                 </div>
                 <div id="preview-container" style="display: none; margin-top: 15px; text-align: center;">
                     <img id="image-preview" style="max-width: 100%; border-radius: 10px;">
@@ -166,49 +85,134 @@
         </div>
     </div>
 
-    <!-- Video Modal -->
-    <div id="video-modal" class="modal-overlay" style="display: none;">
+    <!-- Write News Modal -->
+    <div id="post-modal" class="modal-overlay" style="display: none;">
         <div class="glass modal-box">
-            <h2>영상 올리기</h2>
+            <h2>소식 전하기</h2>
             <div class="input-group">
-                <p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">
-                    방법 1: 유튜브 등 영상 주소(URL)를 입력하세요.<br>
-                    방법 2: PC에서 영상 파일을 선택하세요 (고용량은 유튜브 권장).
-                </p>
-                <input type="text" id="video-url" placeholder="유튜브 또는 영상 주소 (URL)">
-                <div style="text-align: center; margin: 10px 0; color: #999;">- OR -</div>
-                <input type="file" id="video-file" accept="video/*" style="padding: 10px;">
-                <input type="text" id="video-title-input" placeholder="영상 제목">
-                <input type="date" id="video-date-input">
-                <div id="video-preview-container" style="display: none; margin-top: 15px; text-align: center;">
-                    <video id="video-preview" controls style="max-width: 100%; border-radius: 10px;"></video>
-                </div>
+                <input type="text" id="post-title" placeholder="제목">
+                <input type="text" id="post-author" placeholder="작성자">
+                <textarea id="post-content" placeholder="내용"></textarea>
+                <input type="text" id="post-image" placeholder="이미지 주소(선택)">
             </div>
             <div class="modal-buttons">
-                <button onclick="closeVideoModal()" class="btn-cancel">취소</button>
-                <button onclick="submitVideo()" class="btn-primary">올리기</button>
+                <button onclick="closeModal()" class="btn-cancel">취소</button>
+                <button onclick="submitPost()" class="btn-primary">올리기</button>
             </div>
         </div>
     </div>
 
-    <!-- Event Modal -->
+    <script>
+        var firebaseConfig = {
+            apiKey: "AIzaSyBMU-Xl9O-allLpayUHUvUgM13BWR8",
+            authDomain: "family-archive-eb4b2.firebaseapp.com",
+            projectId: "family-archive-eb4b2",
+            storageBucket: "family-archive-eb4b2.firebasestorage.app",
+            messagingSenderId: "313936285468",
+            appId: "1:313936285468:web:0e5f99ebf2796e6f2be227"
+        };
 
-    <div id="event-modal" class="modal-overlay" style="display: none;">
-        <div class="glass modal-box">
-            <h2>새 일정 추가</h2>
-            <div class="input-group">
-                <input type="date" id="event-date">
-                <input type="text" id="event-desc" placeholder="일정 설명">
-            </div>
+        firebase.initializeApp(firebaseConfig);
+        var db = firebase.firestore();
+        db.settings({ experimentalForceLongPolling: true });
 
-            <div class="modal-buttons">
-                <button onclick="closeEventModal()" class="btn-cancel">취소</button>
-                <button onclick="submitEvent()" class="btn-primary">등록하기</button>
-            </div>
-        </div>
-    </div>
+        var compressedImageData = null;
 
-    <script src="script.js"></script>
+        function checkPassword() {
+            if (document.getElementById('family-password').value === "1234") {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                initializeRealtimeUpdates();
+            } else { alert("비밀번호가 틀렸습니다."); }
+        }
+
+        function openModal() { document.getElementById('post-modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('post-modal').style.display = 'none'; }
+        function openAlbumModal() { document.getElementById('album-modal').style.display = 'flex'; }
+        function closeAlbumModal() { document.getElementById('album-modal').style.display = 'none'; resetAlbumPreview(); }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var f = document.getElementById('album-file');
+            var p = document.getElementById('paste-area');
+            if (p && f) { p.onclick = function() { f.click(); }; }
+            if (f) {
+                f.onchange = function(e) {
+                    var file = e.target.files[0];
+                    if (!file) return;
+                    p.innerText = "압축 중...";
+                    var reader = new FileReader();
+                    reader.onload = function(ev) {
+                        var img = new Image();
+                        img.onload = function() {
+                            var canvas = document.createElement('canvas');
+                            var MAX = 800;
+                            var w = img.width, h = img.height;
+                            if (w > MAX) { h *= MAX / w; w = MAX; }
+                            canvas.width = w; canvas.height = h;
+                            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                            compressedImageData = canvas.toDataURL('image/jpeg', 0.6);
+                            document.getElementById('image-preview').src = compressedImageData;
+                            document.getElementById('preview-container').style.display = 'block';
+                            p.innerText = "준비 완료! [추가하기] 클릭";
+                        };
+                        img.src = ev.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                };
+            }
+        });
+
+        function resetAlbumPreview() {
+            compressedImageData = null;
+            document.getElementById('image-preview').src = '';
+            document.getElementById('preview-container').style.display = 'none';
+            document.getElementById('paste-area').innerText = "여기를 터치하여 사진 선택";
+        }
+
+        function submitAlbum() {
+            alert("버튼이 눌렸습니다! 창을 닫고 전송을 시작합니다.");
+            if (!compressedImageData) { alert("사진이 준비되지 않았습니다."); return; }
+            closeAlbumModal();
+            db.collection("familyAlbum").add({
+                imageUrl: compressedImageData,
+                createdAt: new Date().toISOString()
+            }).catch(function(e) { alert("오류: " + e.message); });
+        }
+
+        function submitPost() {
+            var t = document.getElementById('post-title').value;
+            var a = document.getElementById('post-author').value;
+            var c = document.getElementById('post-content').value;
+            if (!t || !a || !c) { alert("내용을 채워주세요."); return; }
+            db.collection("familyPosts").add({
+                title: t, author: a, content: c,
+                image: document.getElementById('post-image').value || "",
+                date: new Date().toISOString().split('T')[0],
+                createdAt: new Date().toISOString()
+            }).then(closeModal);
+        }
+
+        function initializeRealtimeUpdates() {
+            db.collection("familyPosts").orderBy("createdAt", "desc").onSnapshot(function(qs) {
+                var c = document.getElementById('feed-container'); c.innerHTML = '';
+                qs.forEach(function(doc) {
+                    var item = doc.data();
+                    var d = document.createElement('div'); d.className = 'glass card';
+                    d.innerHTML = '<div class="card-content"><h3>'+item.title+'</h3><p>'+item.content+'</p></div>';
+                    c.appendChild(d);
+                });
+            });
+            db.collection("familyAlbum").orderBy("createdAt", "desc").onSnapshot(function(qs) {
+                var c = document.getElementById('album-container'); c.innerHTML = '';
+                qs.forEach(function(doc) {
+                    var item = doc.data();
+                    var d = document.createElement('div'); d.className = 'glass card';
+                    d.innerHTML = '<img src="'+item.imageUrl+'" style="width:100%; border-radius:10px;">';
+                    c.appendChild(d);
+                });
+            });
+        }
+    </script>
 </body>
 
 </html>
