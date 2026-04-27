@@ -1,11 +1,11 @@
 // [안정성 강화 버전] 
 var firebaseConfig = {
-  apiKey: "AIzaSyBMU-Xl9O-alLLpayUHUvUgNlSBWR8", 
-  authDomain: "family-archive-eb4b2.firebaseapp.com",
-  projectId: "family-archive-eb4b2",
-  storageBucket: "family-archive-eb4b2.firebasestorage.app",
-  messagingSenderId: "313936285468",
-  appId: "1:313936285468:web:0e5f99ebf2796e6f2be227"
+  apiKey: "AIzaSyA8MU-9T0Go-sGlLyaylAIhO_qgN238ROE",
+  authDomain: "family-archive-dd482.firebaseapp.com",
+  projectId: "family-archive-dd482",
+  storageBucket: "family-archive-dd482.firebasestorage.app",
+  messagingSenderId: "238028540570",
+  appId: "1:238028540570:web:e0d9464d174eca1c86ad23"
 };
 
 var db;
@@ -144,6 +144,8 @@ function submitEvent() {
     }).catch(function(e) { alert("전송 실패: " + e.message); });
 }
 
+var pendingUpload = null;
+
 function submitAlbum() {
     if (!compressedImageData) {
         alert("사진을 먼저 선택해 주세요.");
@@ -153,42 +155,45 @@ function submitAlbum() {
     var btn = document.querySelector("#album-modal .btn-primary");
     btn.innerText = "전송 중...";
     btn.disabled = true;
-    updateStatus("서버로 전송 시도...", "#ffc107");
+    updateStatus("서버로 전송 중...", "#ffc107");
 
     var sizeKB = Math.round((compressedImageData.length * 3 / 4) / 1024);
-    console.log("이미지 크기 (base64):", sizeKB, "KB");
+    var marker = "u_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+    console.log("업로드 시작 — 크기:", sizeKB, "KB, marker:", marker);
 
     var settled = false;
-    var timeoutId = setTimeout(function() {
+    var settle = function(msg, color, isFailure) {
         if (settled) return;
         settled = true;
+        clearTimeout(timeoutId);
+        pendingUpload = null;
         btn.innerText = "추가하기";
         btn.disabled = false;
-        updateStatus("응답 없음 (30초 초과)", "#f44336");
-        alert("30초 동안 서버 응답이 없습니다.\n네트워크 연결 또는 Firestore 보안 규칙을 확인해 주세요.\n\n이미지 크기: " + sizeKB + " KB");
+        updateStatus(msg, color);
+        if (!isFailure) closeAlbumModal();
+    };
+
+    // 리스너가 marker를 가진 새 문서를 화면에 띄우면 성공 확정 (add().then() 회귀 우회)
+    pendingUpload = {
+        marker: marker,
+        onConfirmed: function() { settle("업로드 성공!", "#4caf50", false); }
+    };
+
+    var timeoutId = setTimeout(function() {
+        settle("응답 없음 (30초 초과)", "#f44336", true);
+        alert("30초 동안 응답이 없습니다.\n이미지 크기: " + sizeKB + " KB\n네트워크/규칙을 확인해 주세요.");
     }, 30000);
 
     db.collection("familyAlbum").add({
         imageUrl: compressedImageData,
-        time: Date.now()
+        time: Date.now(),
+        marker: marker
     }).then(function() {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeoutId);
-        updateStatus("업로드 성공!", "#4caf50");
-        closeAlbumModal();
-        btn.innerText = "추가하기";
-        btn.disabled = false;
-        alert("성공적으로 업로드되었습니다!");
+        console.log("add().then() 발화 (marker:", marker, ")");
     }).catch(function(error) {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeoutId);
-        btn.innerText = "추가하기";
-        btn.disabled = false;
         console.error("전송 에러:", error);
-        alert("전송 실패!\n코드: " + error.code + "\n사유: " + error.message + "\n\n(서버 규칙 설정을 다시 확인해 주세요)");
-        updateStatus("전송 실패: " + error.code, "#f44336");
+        settle("전송 실패: " + error.code, "#f44336", true);
+        alert("전송 실패!\n코드: " + error.code + "\n사유: " + error.message);
     });
 }
 
@@ -200,8 +205,10 @@ function initializeRealtimeUpdates() {
         var cont = document.getElementById('album-container');
         if (!cont) return;
         cont.innerHTML = '';
+        var matched = false;
         qs.forEach(function(doc) {
             var item = doc.data();
+            if (pendingUpload && item.marker === pendingUpload.marker) matched = true;
             var d = document.createElement('div');
             d.className = 'glass card';
             d.style.padding = '10px';
@@ -210,6 +217,9 @@ function initializeRealtimeUpdates() {
             cont.appendChild(d);
         });
         updateStatus("서버 연결됨", "#4caf50");
+        if (matched && pendingUpload && pendingUpload.onConfirmed) {
+            pendingUpload.onConfirmed();
+        }
     }, function(err) {
         console.error("Album Load Error:", err);
         updateStatus("연결 오류: " + err.code, "#f44336");

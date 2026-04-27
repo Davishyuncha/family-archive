@@ -5,6 +5,9 @@
 *.mkv
 *.webm
 
+# 스크린샷 / 작업용 임시 이미지
+*.png
+
 # OS / 에디터
 .DS_Store
 Thumbs.db
