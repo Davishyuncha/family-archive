@@ -16,7 +16,7 @@ try {
         firebase.initializeApp(firebaseConfig);
     }
     db = firebase.firestore();
-    // 일부 환경에서 문제를 일으킬 수 있는 설정을 제거하고 기본값으로 시도
+    db.settings({ experimentalForceLongPolling: true });
     console.log("Firebase 연결 준비 완료");
 } catch (e) {
     alert("연결 초기화 실패: " + e.message);
@@ -155,17 +155,35 @@ function submitAlbum() {
     btn.disabled = true;
     updateStatus("서버로 전송 시도...", "#ffc107");
 
-    // 필드명을 단순화하여 전송 테스트
+    var sizeKB = Math.round((compressedImageData.length * 3 / 4) / 1024);
+    console.log("이미지 크기 (base64):", sizeKB, "KB");
+
+    var settled = false;
+    var timeoutId = setTimeout(function() {
+        if (settled) return;
+        settled = true;
+        btn.innerText = "추가하기";
+        btn.disabled = false;
+        updateStatus("응답 없음 (30초 초과)", "#f44336");
+        alert("30초 동안 서버 응답이 없습니다.\n네트워크 연결 또는 Firestore 보안 규칙을 확인해 주세요.\n\n이미지 크기: " + sizeKB + " KB");
+    }, 30000);
+
     db.collection("familyAlbum").add({
         imageUrl: compressedImageData,
-        time: Date.now() 
+        time: Date.now()
     }).then(function() {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
         updateStatus("업로드 성공!", "#4caf50");
         closeAlbumModal();
         btn.innerText = "추가하기";
         btn.disabled = false;
         alert("성공적으로 업로드되었습니다!");
     }).catch(function(error) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
         btn.innerText = "추가하기";
         btn.disabled = false;
         console.error("전송 에러:", error);
