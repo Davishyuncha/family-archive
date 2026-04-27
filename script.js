@@ -1,6 +1,6 @@
-// 1. Firebase 설정
+// [안정성 강화 버전] 
 var firebaseConfig = {
-  apiKey: "AIzaSyBMU-Xl9O-allLpayUHUvUgM13BWR8",
+  apiKey: "AIzaSyBMU-Xl9O-alLLpayUHUvUgNlSBWR8", 
   authDomain: "family-archive-eb4b2.firebaseapp.com",
   projectId: "family-archive-eb4b2",
   storageBucket: "family-archive-eb4b2.firebasestorage.app",
@@ -8,15 +8,28 @@ var firebaseConfig = {
   appId: "1:313936285468:web:0e5f99ebf2796e6f2be227"
 };
 
-// Firebase 초기화
-firebase.initializeApp(firebaseConfig);
-var db = firebase.firestore();
-db.settings({ experimentalForceLongPolling: true });
-
-// 전역 변수
+var db;
 var compressedImageData = null;
 
-// 로그인 체크
+try {
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    db = firebase.firestore();
+    // 일부 환경에서 문제를 일으킬 수 있는 설정을 제거하고 기본값으로 시도
+    console.log("Firebase 연결 준비 완료");
+} catch (e) {
+    alert("연결 초기화 실패: " + e.message);
+}
+
+function updateStatus(msg, color) {
+    var s = document.getElementById('conn-status');
+    if (s) { 
+        s.innerText = msg; 
+        if (color) s.style.color = color;
+    }
+}
+
 function checkPassword() {
     var pw = document.getElementById('family-password').value;
     if (pw === "1234") {
@@ -28,7 +41,6 @@ function checkPassword() {
     }
 }
 
-// 모달 제어
 function openModal() { document.getElementById('post-modal').style.display = 'flex'; }
 function closeModal() { document.getElementById('post-modal').style.display = 'none'; }
 function openAlbumModal() { document.getElementById('album-modal').style.display = 'flex'; }
@@ -38,40 +50,30 @@ function closeVideoModal() { document.getElementById('video-modal').style.displa
 function openEventModal() { document.getElementById('event-modal').style.display = 'flex'; }
 function closeEventModal() { document.getElementById('event-modal').style.display = 'none'; }
 
-// 사진 선택 및 압축
 document.addEventListener('DOMContentLoaded', function() {
     var fileInput = document.getElementById('album-file');
-    var pasteArea = document.getElementById('paste-area');
-    
-    if (pasteArea && fileInput) {
-        pasteArea.onclick = function() { fileInput.click(); };
-    }
-    
     if (fileInput) {
         fileInput.onchange = function(e) {
             var file = e.target.files[0];
             if (!file) return;
-            
-            document.getElementById('paste-area').innerText = "사진 읽는 중...";
+            updateStatus("사진 압축 중...", "#ffc107");
             var reader = new FileReader();
             reader.onload = function(event) {
                 var img = new Image();
                 img.onload = function() {
-                    document.getElementById('paste-area').innerText = "최적화 중...";
                     var canvas = document.createElement('canvas');
-                    var MAX_WIDTH = 1000;
+                    var MAX_WIDTH = 800;
                     var width = img.width;
                     var height = img.height;
                     if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                    canvas.width = width;
-                    canvas.height = height;
+                    canvas.width = width; canvas.height = height;
                     var ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    
-                    compressedImageData = canvas.toDataURL('image/jpeg', 0.7);
+                    compressedImageData = canvas.toDataURL('image/jpeg', 0.6);
                     document.getElementById('image-preview').src = compressedImageData;
                     document.getElementById('preview-container').style.display = 'block';
-                    document.getElementById('paste-area').innerText = "준비 완료! [추가하기] 클릭";
+                    document.getElementById('paste-area').innerText = "사진 준비 완료!";
+                    updateStatus("업로드 준비됨", "#4caf50");
                 };
                 img.src = event.target.result;
             };
@@ -84,92 +86,101 @@ function resetAlbumPreview() {
     compressedImageData = null;
     document.getElementById('image-preview').src = '';
     document.getElementById('preview-container').style.display = 'none';
-    document.getElementById('paste-area').innerText = "여기에 사진 붙여넣기";
-}
-
-// 서버 전송 (스마트폰 최적화: 창부터 닫기)
-function submitAlbum() {
-    alert("추가하기 버튼이 눌렸습니다! 작업을 시작합니다.");
-    
-    if (!compressedImageData) {
-        alert("사진이 아직 준비되지 않았습니다. 잠시만 기다려 주세요.");
-        return;
-    }
-
-    // 1. 일단 창부터 즉시 닫기
-    closeAlbumModal();
-    alert("화면을 닫고 전송을 시작합니다.");
-
-    // 2. 그 다음 서버로 조용히 보내기
-    try {
-        db.collection("familyAlbum").add({
-            imageUrl: compressedImageData,
-            createdAt: new Date().toISOString()
-        }).then(function() {
-            console.log("전송 완료");
-        }).catch(function(error) {
-            alert("서버 전송 중 오류 발생: " + error.message);
-        });
-    } catch (e) {
-        alert("코드 실행 중 오류 발생: " + e.message);
-    }
+    document.getElementById('paste-area').innerText = "여기를 터치하여 사진 선택";
 }
 
 function submitPost() {
     var t = document.getElementById('post-title').value;
     var a = document.getElementById('post-author').value;
     var c = document.getElementById('post-content').value;
-    if (!t || !a || !c) { alert("내용을 입력하세요."); return; }
-    
+    if (!t || !a || !c) { alert("내용을 모두 입력해 주세요."); return; }
+
     db.collection("familyPosts").add({
-        title: t, author: a, content: c,
-        image: document.getElementById('post-image').value || "",
+        title: t,
+        author: a,
+        content: c,
         date: new Date().toISOString().split('T')[0],
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(closeModal);
+        time: Date.now()
+    }).then(function() {
+        closeModal();
+        document.getElementById('post-title').value = '';
+        document.getElementById('post-author').value = '';
+        document.getElementById('post-content').value = '';
+    }).catch(function(e) { alert("전송 실패: " + e.message); });
 }
 
 function submitVideo() {
-    var u = document.getElementById('video-url').value;
-    if (!u) return;
+    var url = document.getElementById('video-url').value;
+    var title = document.getElementById('video-title-input').value;
+    var date = document.getElementById('video-date-input').value;
+    if (!url || !title) { alert("제목과 YouTube 주소를 입력해 주세요."); return; }
+
     db.collection("familyVideos").add({
-        title: document.getElementById('video-title-input').value,
-        date: document.getElementById('video-date-input').value,
-        source: u,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(closeVideoModal);
+        title: title,
+        date: date,
+        source: url,
+        time: Date.now()
+    }).then(function() {
+        closeVideoModal();
+        document.getElementById('video-url').value = '';
+        document.getElementById('video-title-input').value = '';
+        document.getElementById('video-date-input').value = '';
+    }).catch(function(e) { alert("전송 실패: " + e.message); });
 }
 
 function submitEvent() {
     var d = document.getElementById('event-date').value;
     var s = document.getElementById('event-desc').value;
-    if (!d || !s) return;
+    if (!d || !s) { alert("날짜와 일정 내용을 입력해 주세요."); return; }
+
     db.collection("familyEvents").add({
-        date: d, desc: s,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(closeEventModal);
+        date: d,
+        desc: s,
+        time: Date.now()
+    }).then(function() {
+        closeEventModal();
+        document.getElementById('event-date').value = '';
+        document.getElementById('event-desc').value = '';
+    }).catch(function(e) { alert("전송 실패: " + e.message); });
 }
 
-// 실시간 화면 업데이트
-function initializeRealtimeUpdates() {
-    db.collection("familyPosts").orderBy("createdAt", "desc").onSnapshot(function(qs) {
-        var cont = document.getElementById('feed-container');
-        cont.innerHTML = '';
-        qs.forEach(function(doc) {
-            var item = doc.data();
-            var d = document.createElement('div');
-            d.className = 'glass card';
-            d.innerHTML = '<div class="card-content">' +
-                (item.image ? '<img src="'+item.image+'" style="width:100%; border-radius:10px; margin-bottom:10px;">' : '') +
-                '<span class="date">'+item.date+' | '+item.author+'</span>' +
-                '<h3>'+item.title+'</h3><p>'+item.content+'</p>' +
-                '<button class="btn-delete" onclick="deleteItem(\'familyPosts\', \''+doc.id+'\')">삭제</button></div>';
-            cont.appendChild(d);
-        });
-    });
+function submitAlbum() {
+    if (!compressedImageData) {
+        alert("사진을 먼저 선택해 주세요.");
+        return;
+    }
 
-    db.collection("familyAlbum").orderBy("createdAt", "desc").onSnapshot(function(qs) {
+    var btn = document.querySelector("#album-modal .btn-primary");
+    btn.innerText = "전송 중...";
+    btn.disabled = true;
+    updateStatus("서버로 전송 시도...", "#ffc107");
+
+    // 필드명을 단순화하여 전송 테스트
+    db.collection("familyAlbum").add({
+        imageUrl: compressedImageData,
+        time: Date.now() 
+    }).then(function() {
+        updateStatus("업로드 성공!", "#4caf50");
+        closeAlbumModal();
+        btn.innerText = "추가하기";
+        btn.disabled = false;
+        alert("성공적으로 업로드되었습니다!");
+    }).catch(function(error) {
+        btn.innerText = "추가하기";
+        btn.disabled = false;
+        console.error("전송 에러:", error);
+        alert("전송 실패!\n코드: " + error.code + "\n사유: " + error.message + "\n\n(서버 규칙 설정을 다시 확인해 주세요)");
+        updateStatus("전송 실패: " + error.code, "#f44336");
+    });
+}
+
+function initializeRealtimeUpdates() {
+    updateStatus("데이터 로딩 중...", "#ffc107");
+
+    // 모든 데이터를 정렬 없이 가장 단순하게 불러오기 (권한 테스트용)
+    db.collection("familyAlbum").onSnapshot(function(qs) {
         var cont = document.getElementById('album-container');
+        if (!cont) return;
         cont.innerHTML = '';
         qs.forEach(function(doc) {
             var item = doc.data();
@@ -180,47 +191,90 @@ function initializeRealtimeUpdates() {
                 '<button class="btn-delete" onclick="deleteItem(\'familyAlbum\', \''+doc.id+'\')">삭제</button>';
             cont.appendChild(d);
         });
+        updateStatus("서버 연결됨", "#4caf50");
+    }, function(err) {
+        console.error("Album Load Error:", err);
+        updateStatus("연결 오류: " + err.code, "#f44336");
     });
 
-    db.collection("familyVideos").orderBy("createdAt", "desc").onSnapshot(function(qs) {
-        var cont = document.getElementById('video-container');
+    db.collection("familyPosts").onSnapshot(function(qs) {
+        var cont = document.getElementById('feed-container');
+        if (!cont) return;
         cont.innerHTML = '';
-        qs.forEach(function(doc) {
-            var v = doc.data();
+        var list = [];
+        qs.forEach(function(doc) { list.push({ id: doc.id, data: doc.data() }); });
+        list.sort(function(a, b) { return (b.data.time || 0) - (a.data.time || 0); });
+        list.forEach(function(row) {
+            var item = row.data;
             var d = document.createElement('div');
-            d.className = 'glass card video-card';
-            var regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            var match = v.source.match(regExp);
-            var embed = (match && match[2].length === 11) ? "https://www.youtube.com/embed/" + match[2] : v.source;
-            d.innerHTML = '<div class="video-display" style="position:relative; aspect-ratio:16/9; background:#000; border-radius:15px; overflow:hidden;">' +
-                '<iframe src="'+embed+'" style="width:100%; height:100%; border:none;" allowfullscreen></iframe></div>' +
-                '<div class="card-content"><h3>'+v.title+'</h3><button class="btn-delete" onclick="deleteItem(\'familyVideos\', \''+doc.id+'\')">삭제</button></div>';
+            d.className = 'glass card';
+            d.innerHTML = '<div class="card-content">' +
+                '<span class="date">'+(item.date||'')+(item.author ? ' | '+item.author : '')+'</span>' +
+                '<h3>'+(item.title||'제목 없음')+'</h3><p>'+(item.content||'')+'</p>' +
+                '<button class="btn-delete" onclick="deleteItem(\'familyPosts\', \''+row.id+'\')">삭제</button></div>';
             cont.appendChild(d);
         });
     });
 
-    db.collection("familyEvents").orderBy("date", "asc").onSnapshot(function(qs) {
-        var cont = document.getElementById('events-container');
+    db.collection("familyVideos").onSnapshot(function(qs) {
+        var cont = document.getElementById('video-container');
+        if (!cont) return;
         cont.innerHTML = '';
-        qs.forEach(function(doc) {
-            var e = doc.data();
+        var list = [];
+        qs.forEach(function(doc) { list.push({ id: doc.id, data: doc.data() }); });
+        list.sort(function(a, b) { return (b.data.time || 0) - (a.data.time || 0); });
+        list.forEach(function(row) {
+            var v = row.data;
+            var regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            var match = (v.source || '').match(regExp);
+            var embed = (match && match[2].length === 11) ? "https://www.youtube.com/embed/" + match[2] : v.source;
+            var d = document.createElement('div');
+            d.className = 'glass card video-card';
+            d.innerHTML = '<div class="video-display" style="position:relative; aspect-ratio:16/9; background:#000; border-radius:15px; overflow:hidden;">' +
+                '<iframe src="'+embed+'" style="width:100%; height:100%; border:none;" allowfullscreen></iframe></div>' +
+                '<div class="card-content"><h3>'+(v.title||'')+'</h3>' +
+                '<span class="date">'+(v.date||'')+'</span>' +
+                '<button class="btn-delete" onclick="deleteItem(\'familyVideos\', \''+row.id+'\')">삭제</button></div>';
+            cont.appendChild(d);
+        });
+    });
+
+    db.collection("familyEvents").onSnapshot(function(qs) {
+        var cont = document.getElementById('events-container');
+        if (!cont) return;
+        cont.innerHTML = '';
+        var list = [];
+        qs.forEach(function(doc) { list.push({ id: doc.id, data: doc.data() }); });
+        list.sort(function(a, b) { return (a.data.date || '').localeCompare(b.data.date || ''); });
+        list.forEach(function(row) {
+            var e = row.data;
             var d = document.createElement('div');
             d.className = 'event-card';
-            d.innerHTML = '<div class="date">'+e.date+'</div><div class="desc">'+e.desc+'</div>' +
-                '<button class="btn-delete" onclick="deleteItem(\'familyEvents\', \''+doc.id+'\')">X</button>';
+            d.innerHTML = '<div class="date">'+(e.date||'')+'</div><div class="desc">'+(e.desc||'')+'</div>' +
+                '<button class="btn-delete" onclick="deleteItem(\'familyEvents\', \''+row.id+'\')">X</button>';
             cont.appendChild(d);
         });
     });
 }
 
 function deleteItem(coll, id) {
-    if (confirm("삭제하시겠습니까?")) db.collection(coll).doc(id).delete();
+    if (confirm("삭제하시겠습니까?")) {
+        db.collection(coll).doc(id).delete().catch(function(e) { alert("오류: " + e.message); });
+    }
 }
 
-// 전역 연결
 window.checkPassword = checkPassword;
 window.submitAlbum = submitAlbum;
 window.submitPost = submitPost;
 window.submitVideo = submitVideo;
 window.submitEvent = submitEvent;
 window.deleteItem = deleteItem;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.openAlbumModal = openAlbumModal;
+window.closeAlbumModal = closeAlbumModal;
+window.openVideoModal = openVideoModal;
+window.closeVideoModal = closeVideoModal;
+window.openEventModal = openEventModal;
+window.closeEventModal = closeEventModal;
+

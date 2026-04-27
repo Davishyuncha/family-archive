@@ -32,6 +32,8 @@
                     <li><a href="#home">홈</a></li>
                     <li><a href="#news">우리집 소식</a></li>
                     <li><a href="#album">가족 앨범</a></li>
+                    <li><a href="#videos">영상</a></li>
+                    <li><a href="#events">일정</a></li>
                 </ul>
             </nav>
         </header>
@@ -62,6 +64,24 @@
                 </div>
                 <div class="grid gallery" id="album-container"></div>
             </section>
+
+            <section id="videos" class="container">
+                <div class="section-title">
+                    <h2>가족 영상</h2>
+                    <div class="underline"></div>
+                    <button class="btn-secondary" onclick="openVideoModal()" style="margin-top: 20px;">영상 추가</button>
+                </div>
+                <div class="grid" id="video-container"></div>
+            </section>
+
+            <section id="events" class="container">
+                <div class="section-title">
+                    <h2>가족 일정</h2>
+                    <div class="underline"></div>
+                    <button class="btn-secondary" onclick="openEventModal()" style="margin-top: 20px;">일정 추가</button>
+                </div>
+                <div class="calendar-widget" id="events-container"></div>
+            </section>
         </main>
 
         <div id="status-bar" style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.85); color: white; font-size: 11px; padding: 10px; text-align: center; z-index: 9999;">
@@ -75,7 +95,7 @@
             <h2>사진 올리기</h2>
             <div class="input-group">
                 <input type="file" id="album-file" accept="image/*" style="display:none;">
-                <div id="paste-area" style="border: 2px dashed #ddd; padding: 40px; text-align: center; cursor: pointer; border-radius: 10px;">
+                <div id="paste-area" onclick="document.getElementById('album-file').click()" style="border: 2px dashed #ddd; padding: 40px; text-align: center; cursor: pointer; border-radius: 10px;">
                     여기를 터치하여 사진 선택
                 </div>
                 <div id="preview-container" style="display: none; margin-top: 15px; text-align: center;">
@@ -97,6 +117,7 @@
                 <input type="text" id="post-title" placeholder="제목">
                 <input type="text" id="post-author" placeholder="작성자">
                 <textarea id="post-content" placeholder="내용"></textarea>
+                <input type="hidden" id="post-image" value="">
             </div>
             <div class="modal-buttons">
                 <button onclick="closeModal()" class="btn-cancel">취소</button>
@@ -105,139 +126,38 @@
         </div>
     </div>
 
-    <script>
-        var firebaseConfig = {
-            apiKey: "AIzaSyBMU-Xl9O-alLLpayUHUvUgNlSBWR8",
-            authDomain: "family-archive-eb4b2.firebaseapp.com",
-            projectId: "family-archive-eb4b2",
-            storageBucket: "family-archive-eb4b2.firebasestorage.app",
-            messagingSenderId: "313936285468",
-            appId: "1:313936285468:web:0e5f99ebf2796e6f2be227"
-        };
+    <!-- Video Modal -->
+    <div id="video-modal" class="modal-overlay" style="display: none;">
+        <div class="glass modal-box">
+            <h2>영상 추가</h2>
+            <div class="input-group">
+                <input type="text" id="video-title-input" placeholder="영상 제목">
+                <input type="text" id="video-date-input" placeholder="날짜 (예: 2024-04-27)">
+                <input type="text" id="video-url" placeholder="YouTube 주소">
+            </div>
+            <div class="modal-buttons">
+                <button onclick="closeVideoModal()" class="btn-cancel">취소</button>
+                <button onclick="submitVideo()" class="btn-primary">추가하기</button>
+            </div>
+        </div>
+    </div>
 
-        firebase.initializeApp(firebaseConfig);
-        var db = firebase.firestore();
+    <!-- Event Modal -->
+    <div id="event-modal" class="modal-overlay" style="display: none;">
+        <div class="glass modal-box">
+            <h2>일정 추가</h2>
+            <div class="input-group">
+                <input type="date" id="event-date">
+                <input type="text" id="event-desc" placeholder="일정 내용">
+            </div>
+            <div class="modal-buttons">
+                <button onclick="closeEventModal()" class="btn-cancel">취소</button>
+                <button onclick="submitEvent()" class="btn-primary">추가하기</button>
+            </div>
+        </div>
+    </div>
 
-        var compressedImageData = null;
-
-        function checkPassword() {
-            if (document.getElementById('family-password').value === "1234") {
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('main-content').style.display = 'block';
-                initializeRealtimeUpdates();
-            } else { alert("비밀번호가 틀렸습니다."); }
-        }
-
-        function openModal() { document.getElementById('post-modal').style.display = 'flex'; }
-        function closeModal() { document.getElementById('post-modal').style.display = 'none'; }
-        function openAlbumModal() { document.getElementById('album-modal').style.display = 'flex'; }
-        function closeAlbumModal() { document.getElementById('album-modal').style.display = 'none'; resetAlbumPreview(); }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            var f = document.getElementById('album-file');
-            var p = document.getElementById('paste-area');
-            if (p && f) { p.onclick = function() { f.click(); }; }
-            if (f) {
-                f.onchange = function(e) {
-                    var file = e.target.files[0];
-                    if (!file) return;
-                    p.innerText = "처리 중...";
-                    var reader = new FileReader();
-                    reader.onload = function(ev) {
-                        var img = new Image();
-                        img.onload = function() {
-                            var canvas = document.createElement('canvas');
-                            var MAX = 1000;
-                            var w = img.width, h = img.height;
-                            if (w > MAX) { h *= MAX / w; w = MAX; }
-                            canvas.width = w; canvas.height = h;
-                            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                            compressedImageData = canvas.toDataURL('image/jpeg', 0.7);
-                            document.getElementById('image-preview').src = compressedImageData;
-                            document.getElementById('preview-container').style.display = 'block';
-                            p.innerText = "준비 완료!";
-                        };
-                        img.src = ev.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                };
-            }
-        });
-
-        function resetAlbumPreview() {
-            compressedImageData = null;
-            document.getElementById('image-preview').src = '';
-            document.getElementById('preview-container').style.display = 'none';
-            document.getElementById('paste-area').innerText = "터치하여 사진 선택";
-        }
-
-        function submitAlbum() {
-            if (!compressedImageData) { alert("사진을 선택해 주세요."); return; }
-            closeAlbumModal();
-            updateStatus("서버로 전송 중...", "#ffc107");
-            
-            db.collection("familyAlbum").add({
-                imageUrl: compressedImageData,
-                createdAt: new Date().getTime()
-            }).then(function() {
-                updateStatus("전송 성공! 방금 사진이 추가되었습니다.", "#4caf50");
-            }).catch(function(e) { 
-                updateStatus("전송 실패: " + e.message, "#f44336");
-                alert("오류: " + e.message);
-            });
-        }
-
-        function submitPost() {
-            var t = document.getElementById('post-title').value;
-            var a = document.getElementById('post-author').value;
-            var c = document.getElementById('post-content').value;
-            if (!t || !a || !c) return;
-            db.collection("familyPosts").add({
-                title: t, author: a, content: c,
-                date: new Date().toISOString().split('T')[0],
-                createdAt: new Date().getTime()
-            }).then(closeModal);
-        }
-
-        function updateStatus(msg, color) {
-            var s = document.getElementById('conn-status');
-            if (s) { s.innerText = msg; s.style.color = color; }
-        }
-
-        function initializeRealtimeUpdates() {
-            db.collection("familyAlbum").limit(1).onSnapshot(function() {
-                updateStatus("서버 연결됨 (정상)", "#4caf50");
-            }, function(err) {
-                updateStatus("연결 오류: " + err.message, "#f44336");
-            });
-
-            // 소식 리스트 (브라우저에서 직접 정렬)
-            db.collection("familyPosts").onSnapshot(function(qs) {
-                var c = document.getElementById('feed-container'); c.innerHTML = '';
-                var list = [];
-                qs.forEach(function(doc) { list.push(doc.data()); });
-                list.sort(function(a, b) { return b.createdAt - a.createdAt; });
-                list.forEach(function(item) {
-                    var d = document.createElement('div'); d.className = 'glass card';
-                    d.innerHTML = '<div class="card-content"><h3>'+item.title+'</h3><p>'+item.content+'</p></div>';
-                    c.appendChild(d);
-                });
-            });
-
-            // 앨범 리스트 (브라우저에서 직접 정렬)
-            db.collection("familyAlbum").onSnapshot(function(qs) {
-                var c = document.getElementById('album-container'); c.innerHTML = '';
-                var list = [];
-                qs.forEach(function(doc) { list.push(doc.data()); });
-                list.sort(function(a, b) { return b.createdAt - a.createdAt; });
-                list.forEach(function(item) {
-                    var d = document.createElement('div'); d.className = 'glass card';
-                    d.innerHTML = '<img src="'+item.imageUrl+'" style="width:100%; border-radius:10px;">';
-                    c.appendChild(d);
-                });
-            });
-        }
-    </script>
+    <script src="script.js?v=3"></script>
 </body>
 
 </html>
