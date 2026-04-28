@@ -1,4 +1,4 @@
-// [안정성 강화 버전] 
+// [안정성 강화 버전 - 다중 업로드 지원]
 var firebaseConfig = {
   apiKey: "AIzaSyA8MU-9T0Go-sGlLyaylAIhO_qgN238ROE",
   authDomain: "family-archive-dd482.firebaseapp.com",
@@ -9,7 +9,7 @@ var firebaseConfig = {
 };
 
 var db;
-var compressedImageData = null;
+var compressedImages = [];
 
 try {
     if (!firebase.apps.length) {
@@ -24,8 +24,8 @@ try {
 
 function updateStatus(msg, color) {
     var s = document.getElementById('conn-status');
-    if (s) { 
-        s.innerText = msg; 
+    if (s) {
+        s.innerText = msg;
         if (color) s.style.color = color;
     }
 }
@@ -54,39 +54,58 @@ document.addEventListener('DOMContentLoaded', function() {
     var fileInput = document.getElementById('album-file');
     if (fileInput) {
         fileInput.onchange = function(e) {
-            var file = e.target.files[0];
-            if (!file) return;
-            updateStatus("사진 압축 중...", "#ffc107");
-            var reader = new FileReader();
-            reader.onload = function(event) {
-                var img = new Image();
-                img.onload = function() {
-                    var canvas = document.createElement('canvas');
-                    var MAX_WIDTH = 800;
-                    var width = img.width;
-                    var height = img.height;
-                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                    canvas.width = width; canvas.height = height;
-                    var ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    compressedImageData = canvas.toDataURL('image/jpeg', 0.6);
-                    document.getElementById('image-preview').src = compressedImageData;
-                    document.getElementById('preview-container').style.display = 'block';
-                    document.getElementById('paste-area').innerText = "사진 준비 완료!";
-                    updateStatus("업로드 준비됨", "#4caf50");
+            var files = Array.prototype.slice.call(e.target.files || []);
+            if (!files.length) return;
+            compressedImages = new Array(files.length);
+            var preview = document.getElementById('preview-container');
+            preview.innerHTML = '';
+            preview.style.display = 'block';
+            var done = 0;
+            updateStatus("사진 압축 중... (0/" + files.length + ")", "#ffc107");
+            files.forEach(function(file, idx) {
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    var img = new Image();
+                    img.onload = function() {
+                        var canvas = document.createElement('canvas');
+                        var MAX_WIDTH = 800;
+                        var width = img.width;
+                        var height = img.height;
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                        canvas.width = width; canvas.height = height;
+                        var ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        var dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                        compressedImages[idx] = dataUrl;
+                        var thumb = document.createElement('img');
+                        thumb.src = dataUrl;
+                        thumb.style.cssText = 'max-width:80px; max-height:80px; margin:4px; border-radius:6px; vertical-align:middle;';
+                        preview.appendChild(thumb);
+                        done++;
+                        updateStatus("사진 압축 중... (" + done + "/" + files.length + ")", "#ffc107");
+                        if (done === files.length) {
+                            document.getElementById('paste-area').innerText = files.length + "장 준비 완료!";
+                            updateStatus("업로드 준비됨", "#4caf50");
+                            fileInput.value = '';
+                        }
+                    };
+                    img.src = event.target.result;
                 };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+                reader.readAsDataURL(file);
+            });
         };
     }
 });
 
 function resetAlbumPreview() {
-    compressedImageData = null;
-    document.getElementById('image-preview').src = '';
-    document.getElementById('preview-container').style.display = 'none';
-    document.getElementById('paste-area').innerText = "여기를 터치하여 사진 선택";
+    compressedImages = [];
+    var preview = document.getElementById('preview-container');
+    if (preview) {
+        preview.innerHTML = '';
+        preview.style.display = 'none';
+    }
+    var paste = document.getElementById('paste-area');
+    if (paste) paste.innerText = "여기를 터치하여 사진 선택 (여러 장 가능)";
 }
 
 function submitPost() {
@@ -96,9 +115,7 @@ function submitPost() {
     if (!t || !a || !c) { alert("내용을 모두 입력해 주세요."); return; }
 
     db.collection("familyPosts").add({
-        title: t,
-        author: a,
-        content: c,
+        title: t, author: a, content: c,
         date: new Date().toISOString().split('T')[0],
         time: Date.now()
     }).then(function() {
@@ -116,10 +133,7 @@ function submitVideo() {
     if (!url || !title) { alert("제목과 YouTube 주소를 입력해 주세요."); return; }
 
     db.collection("familyVideos").add({
-        title: title,
-        date: date,
-        source: url,
-        time: Date.now()
+        title: title, date: date, source: url, time: Date.now()
     }).then(function() {
         closeVideoModal();
         document.getElementById('video-url').value = '';
@@ -134,9 +148,7 @@ function submitEvent() {
     if (!d || !s) { alert("날짜와 일정 내용을 입력해 주세요."); return; }
 
     db.collection("familyEvents").add({
-        date: d,
-        desc: s,
-        time: Date.now()
+        date: d, desc: s, time: Date.now()
     }).then(function() {
         closeEventModal();
         document.getElementById('event-date').value = '';
@@ -144,10 +156,10 @@ function submitEvent() {
     }).catch(function(e) { alert("전송 실패: " + e.message); });
 }
 
-var pendingUpload = null;
+var pendingBatch = null;
 
 function submitAlbum() {
-    if (!compressedImageData) {
+    if (!compressedImages.length) {
         alert("사진을 먼저 선택해 주세요.");
         return;
     }
@@ -155,70 +167,94 @@ function submitAlbum() {
     var btn = document.querySelector("#album-modal .btn-primary");
     btn.innerText = "전송 중...";
     btn.disabled = true;
-    updateStatus("서버로 전송 중...", "#ffc107");
 
-    var sizeKB = Math.round((compressedImageData.length * 3 / 4) / 1024);
-    var marker = "u_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-    console.log("업로드 시작 — 크기:", sizeKB, "KB, marker:", marker);
+    var images = compressedImages.slice();
+    var total = images.length;
+    var baseTime = Date.now();
+    var markers = images.map(function(_, i) {
+        return "u_" + baseTime + "_" + i + "_" + Math.random().toString(36).slice(2, 8);
+    });
+    updateStatus("서버로 전송 중... (0/" + total + ")", "#ffc107");
 
     var settled = false;
     var settle = function(msg, color, isFailure) {
         if (settled) return;
         settled = true;
         clearTimeout(timeoutId);
-        pendingUpload = null;
+        pendingBatch = null;
         btn.innerText = "추가하기";
         btn.disabled = false;
         updateStatus(msg, color);
         if (!isFailure) closeAlbumModal();
     };
 
-    // 리스너가 marker를 가진 새 문서를 화면에 띄우면 성공 확정 (add().then() 회귀 우회)
-    pendingUpload = {
-        marker: marker,
-        onConfirmed: function() { settle("업로드 성공!", "#4caf50", false); }
+    pendingBatch = {
+        markers: markers,
+        confirmedCount: 0,
+        total: total,
+        onProgress: function(count) {
+            updateStatus("업로드 확인 중... (" + count + "/" + total + ")", "#ffc107");
+        },
+        onAllConfirmed: function() {
+            settle("업로드 성공! (" + total + "장)", "#4caf50", false);
+        }
     };
 
     var timeoutId = setTimeout(function() {
-        settle("응답 없음 (30초 초과)", "#f44336", true);
-        alert("30초 동안 응답이 없습니다.\n이미지 크기: " + sizeKB + " KB\n네트워크/규칙을 확인해 주세요.");
-    }, 30000);
+        var done = pendingBatch ? pendingBatch.confirmedCount : 0;
+        settle("응답 없음 (" + done + "/" + total + " 확인)", "#f44336", true);
+        alert("업로드 시간 초과.\n" + done + "/" + total + "장만 확인되었습니다.");
+    }, Math.max(60000, total * 15000));
 
-    db.collection("familyAlbum").add({
-        imageUrl: compressedImageData,
-        time: Date.now(),
-        marker: marker
-    }).then(function() {
-        console.log("add().then() 발화 (marker:", marker, ")");
-    }).catch(function(error) {
-        console.error("전송 에러:", error);
-        settle("전송 실패: " + error.code, "#f44336", true);
-        alert("전송 실패!\n코드: " + error.code + "\n사유: " + error.message);
+    images.forEach(function(dataUrl, idx) {
+        db.collection("familyAlbum").add({
+            imageUrl: dataUrl,
+            time: baseTime + idx,
+            marker: markers[idx]
+        }).then(function() {
+            console.log("add().then() (marker:", markers[idx], ")");
+        }).catch(function(error) {
+            console.error("전송 에러 (idx=" + idx + "):", error);
+            settle("일부 전송 실패: " + error.code, "#f44336", true);
+            alert("전송 실패!\n사유: " + error.message);
+        });
     });
 }
 
 function initializeRealtimeUpdates() {
     updateStatus("데이터 로딩 중...", "#ffc107");
 
-    // 모든 데이터를 정렬 없이 가장 단순하게 불러오기 (권한 테스트용)
     db.collection("familyAlbum").onSnapshot(function(qs) {
         var cont = document.getElementById('album-container');
         if (!cont) return;
         cont.innerHTML = '';
-        var matched = false;
-        qs.forEach(function(doc) {
-            var item = doc.data();
-            if (pendingUpload && item.marker === pendingUpload.marker) matched = true;
+        var list = [];
+        qs.forEach(function(doc) { list.push({ id: doc.id, data: doc.data() }); });
+        list.sort(function(a, b) { return (b.data.time || 0) - (a.data.time || 0); });
+
+        var matchedCount = 0;
+        list.forEach(function(row) {
+            var item = row.data;
+            if (pendingBatch && item.marker && pendingBatch.markers.indexOf(item.marker) !== -1) {
+                matchedCount++;
+            }
             var d = document.createElement('div');
             d.className = 'glass card';
             d.style.padding = '10px';
             d.innerHTML = '<img src="'+item.imageUrl+'" style="width:100%; border-radius:10px;">' +
-                '<button class="btn-delete" onclick="deleteItem(\'familyAlbum\', \''+doc.id+'\')">삭제</button>';
+                '<button class="btn-delete" onclick="deleteItem(\'familyAlbum\', \''+row.id+'\')">삭제</button>';
             cont.appendChild(d);
         });
-        updateStatus("서버 연결됨", "#4caf50");
-        if (matched && pendingUpload && pendingUpload.onConfirmed) {
-            pendingUpload.onConfirmed();
+
+        if (pendingBatch && matchedCount > pendingBatch.confirmedCount) {
+            pendingBatch.confirmedCount = matchedCount;
+            if (matchedCount >= pendingBatch.total) {
+                pendingBatch.onAllConfirmed();
+            } else {
+                pendingBatch.onProgress(matchedCount);
+            }
+        } else if (!pendingBatch) {
+            updateStatus("서버 연결됨", "#4caf50");
         }
     }, function(err) {
         console.error("Album Load Error:", err);
@@ -305,4 +341,3 @@ window.openVideoModal = openVideoModal;
 window.closeVideoModal = closeVideoModal;
 window.openEventModal = openEventModal;
 window.closeEventModal = closeEventModal;
-
